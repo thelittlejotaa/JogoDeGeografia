@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fragmentos da Syria: War Room</title>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@300;400;700&display=swap');
+
+    :root {
+      --color-bg-dark: #07090b;
+      --color-panel: rgba(15, 20, 25, 0.85);
+      --color-primary: #ff3333;
+      --color-primary-dim: rgba(255, 51, 51, 0.3);
+      --color-neutral: #8899aa;
+      --color-text: #e0e5ea;
+      --color-success: #33ffaa;
+      --color-warning: #ffaa33;
+      --font-ui: 'Share Tech Mono', monospace;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--color-bg-dark);
+      color: var(--color-text);
+      font-family: var(--font-body);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* CRT & SCANLINE OVERLAY */
+    #crt-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 1000;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      background-size: 100% 2px, 3px 100%;
+      opacity: 0.15;
+    }
+
+    /* GLITCH EFFECT */
+    .glitch-anim {
+      animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+    }
+    
+    @keyframes glitch {
+      0% { transform: translate(0) }
+      20% { transform: translate(-2px, 2px) }
+      40% { transform: translate(-2px, -2px) }
+      60% { transform: translate(2px, 2px) }
+      80% { transform: translate(2px, -2px) }
+      100% { transform: translate(0) }
+    }
+
+    /* BACKGROUND MAP */
+    #map-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at center, transparent 0%, #000 90%), url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Syria_location_map.svg/1000px-Syria_location_map.svg.png') no-repeat center center;
+      background-size: cover;
+      opacity: 0.2;
+      z-index: 0;
+      transition: transform 2s ease-in-out, opacity 2s;
+    }
+
+    #map-container.zoomed {
+      transform: scale(2) translate(-10%, 10%);
+      opacity: 0.4;
+    }
+
+    .map-territory {
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none;
+        transition: background 2s ease;
+        z-index: 2;
+    }
+
+    /* HUD TOP BAR */
+    #hud-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      background: rgba(5, 7, 10, 0.95);
+      border-bottom: 1px solid var(--color-neutral);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      z-index: 10;
+      font-family: var(--font-ui);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    }
+
+    .stat-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 200px;
+    }
+
+    .stat-label {
+      font-size: 0.8em;
+      color: var(--color-neutral);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .stat-bar-container {
+      width: 100%;
+      height: 8px;
+      background: #222;
+      border-radius: 4px;
+      margin-top: 4px;
+      overflow: hidden;
+    }
+
+    .stat-bar {
+      height: 100%;
+      width: 50%;
+      background: var(--color-primary);
+      transition: width 0.5s ease-out, background-color 0.5s;
+    }
+
+    .stat-value {
+      font-size: 0.9em;
+      margin-top: 2px;
+      color: #fff;
+    }
+
+    /* RIGHT PANEL - DOSSIER */
+    #dossier-panel {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      width: 600px;
+      height: calc(100vh - 100px);
+      background: var(--color-panel);
+      border: 1px solid var(--color-primary-dim);
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      box-shadow: -10px 10px 30px rgba(0,0,0,0.6);
+      transform: translateX(110%);
+      transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    #dossier-panel.active {
+      transform: translateX(0);
+    }
+
+    .dossier-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--color-primary-dim);
+      background: rgba(255, 51, 51, 0.1);
+    }
+
+    #phase-year {
+      font-family: var(--font-ui);
+      color: var(--color-primary);
+      font-size: 1.2rem;
+      letter-spacing: 3px;
+    }
+
+    #phase-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 5px;
+    }
+
+    .dossier-content {
+      flex-grow: 1;
+      padding: 20px;
+      overflow-y: auto;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      color: #ccc;
+    }
+
+    .dossier-content h3 {
+      color: #fff;
+      margin-top: 15px;
+      margin-bottom: 8px;
+      font-family: var(--font-ui);
+      border-bottom: 1px solid #444;
+      padding-bottom: 4px;
+    }
+
+    .dossier-content ul {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .dossier-content p {
+      margin-bottom: 15px;
+    }
+
+    .dossier-actions {
+      padding: 20px;
+      background: rgba(0,0,0,0.5);
+      border-top: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-action {
+      background: transparent;
+      border: 1px solid var(--color-neutral);
+      color: var(--color-text);
+      padding: 12px 15px;
+      text-align: left;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-action:hover {
+      background: var(--color-primary-dim);
+      border-color: var(--color-primary);
+      padding-left: 20px;
+    }
+    
+    .btn-action::before {
+      content: '>';
+      position: absolute;
+      left: 5px;
+      opacity: 0;
+      color: var(--color-primary);
+      transition: opacity 0.2s;
+    }
+    
+    .btn-action:hover::before {
+      opacity: 1;
+    }
+
+    /* NEWS TICKER */
+    #news-ticker {
+      position: absolute;
+      bottom: 0px;
+      left: 0;
+      width: 100vw;
+      height: 35px;
+      background: #0a0a0a;
+      border-top: 1px solid var(--color-primary-dim);
+      display: flex;
+      align-items: center;
+      z-index: 200;
+       overflow: hidden;
+      font-family: var(--font-ui);
+      display: none;
+    }
+
+    .ticker-label {
+      background: var(--color-primary);
+      color: #fff;
+      padding: 0 15px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      z-index: 2;
+      box-shadow: 5px 0 15px rgba(0,0,0,0.9);
+    }
+
+    .ticker-content {
+      white-space: nowrap;
+      color: var(--color-neutral);
+      padding-left: 100%;
+      animation: ticker-slide 20s linear infinite;
+    }
+
+    @keyframes ticker-slide {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(-200%, 0, 0); }
+    }
+
+    /* MAIN MENU / INTRO */
+    #intro-screen {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #050505;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 1s;
+    }
+    
+    #intro-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .title-box {
+      text-align: center;
+      max-width: 800px;
+    }
+
+    h1 {
+      font-family: var(--font-ui);
+      font-size: 4rem;
+      color: #fff;
+      letter-spacing: 5px;
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      color: var(--color-primary);
+      font-size: 1.2rem;
+      font-family: var(--font-ui);
+      margin-bottom: 3rem;
+      text-transform: uppercase;
+    }
+
+    .btn-start {
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+      padding: 15px 40px;
+      font-size: 1.5rem;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(255,51,51,0.4);
+      transition: all 0.3s;
+    }
+
+    .btn-start:hover {
+      background: #ff5555;
+      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(255,51,51,0.6);
+    }
+    
+    /* MAP MARKERS (CITIES) */
+    .map-marker {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      background: var(--color-primary);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px var(--color-primary);
+      animation: pulse-marker 2s infinite;
+      cursor: pointer;
+      z-index: 5;
+    }
+    
+    .map-marker::after {
+      content: attr(data-name);
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      background: rgba(0,0,0,0.8);
+      padding: 2px 6px;
+      border: 1px solid var(--color-primary);
+      border-radius: 3px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    @keyframes pulse-marker {
+      0% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(255, 51, 51, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0); }
+    }
+    
+    /* END SCREEN */
+    #end-screen {
+      position: absolute;
+      top:0; left:0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.95);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 2s;
+    }
+    
+    #end-screen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .end-content {
+      max-width: 800px;
+      text-align: center;
+    }
+    
+    .end-stat {
+      font-family: var(--font-ui);
+      font-size: 1.5rem;
+      color: var(--color-neutral);
+      margin: 10px 0;
+    }
+    
+    .end-stat span { color: #fff; }
+
+  </style>
+</head>
+
+<body>
+
+  <div id="crt-overlay"></div>
+
+  <!-- BACKGROUND TACTICAL MAP -->
+  <div id="map-container">
+    <div class="map-territory" id="map-territory"></div>
+    <!-- Map Markers (Approximate relative positions for background image) -->
+    <div class="map-marker" data-name="DAMASCO" style="top: 75%; left: 35%;"></div>
+    <div class="map-marker" data-name="DARAA" style="top: 85%; left: 32%;"></div>
+    <div class="map-marker" data-name="HOMS" style="top: 55%; left: 35%;"></div>
+    <div class="map-marker" data-name="ALEPPO" style="top: 25%; left: 35%;"></div>
+    <div class="map-marker" data-name="RAQQA" style="top: 30%; left: 55%;"></div>
+  </div>
+
+  <!-- INTRO SCREEN -->
+  <div id="intro-screen">
+    <div class="title-box">
+      <h1>FRAGMENTOS DA SYRIA</h1>
+      <p class="subtitle">Simulação Estratégica e Histórica do Conflito (2011 - 2026)</p>
+      <button class="btn-start" id="btn-start">INICIAR SIMULAÇÃO</button>
+    </div>
+  </div>
+
+  <!-- TOP HUD STATS -->
+  <div id="hud-top" style="display: none;">
+    <div class="stat-group">
+      <div class="stat-label">Estabilidade do País</div>
+      <div class="stat-bar-container"><div class="stat-bar" id="bar-stability" style="width: 50%; background: var(--color-warning);"></div></div>
+      <div class="stat-value" id="val-stability">50%</div>
+    </div>
+    <div class="stat-group">
+      <div class="stat-label">Crise Humanitária</div>
+      <div class="stat-bar-container"><div class="stat-bar" id="bar-crisis" style="width: 20%; background: var(--color-success);"></div></div>
+      <div class="stat-value" id="val-crisis">Baixa (20%)</div>
+    </div>
+    <div class="stat-group">
+      <div class="stat-label">Controle Radical (ISIS)</div>
+      <div class="stat-bar-container"><div class="stat-bar" id="bar-radical" style="width: 0%; background: var(--color-neutral);"></div></div>
+      <div class="stat-value" id="val-radical">0%</div>
+    </div>
+    <div class="stat-group">
+      <div class="stat-label">Intervenção Externa</div>
+      <div class="stat-bar-container"><div class="stat-bar" id="bar-intervention" style="width: 10%; background: var(--color-neutral);"></div></div>
+      <div class="stat-value" id="val-intervention">10%</div>
+    </div>
+  </div>
+
+  <!-- RIGHT DOSSIER PANEL -->
+  <div id="dossier-panel">
+    <div class="dossier-header">
+      <div id="phase-year">2011</div>
+      <div id="phase-title">A Primavera Árabe e a Revolta</div>
+    </div>
+    
+    <div class="dossier-content" id="dossier-content">
+      <!-- Injected History Content -->
+    </div>
+
+    <div class="dossier-actions" id="dossier-actions">
+      <!-- Injected Choices -->
+    </div>
+  </div>
+  
+  <!-- END SCREEN OVERLAY -->
+  <div id="end-screen">
+      <div class="end-content">
+          <h1>FIM DA SIMULAÇÃO (2026)</h1>
+          <p style="margin-bottom: 30px; line-height: 1.6; font-size: 1.2rem; color: #ccc;">O ditador caiu. O governo de transição tenta estabilizar a Síria, mas a complexidade de 4 guerras simultâneas (Guerra Civil, Religiosa, Contra o Terror e Geopolítica) deixou cicatrizes profundas.</p>
+          
+          <div class="end-stat">Estabilidade Final: <span id="end-stability">0%</span></div>
+          <div class="end-stat">Estado Humanitário: <span id="end-crisis">0%</span></div>
+          <div class="end-stat">Influência Externa: <span id="end-intervention">0%</span></div>
+          
+          <button class="btn-start" style="margin-top: 40px; font-size: 1.2rem;" onclick="location.reload()">REINICIAR</button>
+      </div>
+  </div>
+
+  <!-- NEWS TICKER -->
+  <div id="news-ticker">
+      <div class="ticker-label">INTEL</div>
+      <div class="ticker-content" id="ticker-text">Conexão estabelecida. Recebendo feed criptografado...</div>
+  </div>
+
+  <!-- MAIN JAVASCRIPT LOGIC -->
+  <script>
+    // --- STATE MANAGEMENT ---
+    let state = {
+      stability: 50,      // Começa médio e geralmente despenca
+      crisis: 20,         // Representa mortes/refugiados (0 = bom, 100 = colapso total)
+      radical: 0,         // Força do ISIS/Al-Qaeda
+      intervention: 10,   // Potências estrangeiras (EUA, Russia, Ira, Turquia)
+      currentPhase: 0
+    };
+
+    const ui = {
+      intro: document.getElementById('intro-screen'),
+      hud: document.getElementById('hud-top'),
+      panel: document.getElementById('dossier-panel'),
+      map: document.getElementById('map-container'),
+      
+      year: document.getElementById('phase-year'),
+      title: document.getElementById('phase-title'),
+      content: document.getElementById('dossier-content'),
+      actions: document.getElementById('dossier-actions'),
+      
+      barStability: document.getElementById('bar-stability'),
+      valStability: document.getElementById('val-stability'),
+      barCrisis: document.getElementById('bar-crisis'),
+      valCrisis: document.getElementById('val-crisis'),
+      barRadical: document.getElementById('bar-radical'),
+      valRadical: document.getElementById('val-radical'),
+      barIntervention: document.getElementById('bar-intervention'),
+      valIntervention: document.getElementById('val-intervention'),
+      
+      ticker: document.getElementById('news-ticker'),
+      tickerText: document.getElementById('ticker-text'),
+      territory: document.getElementById('map-territory')
+    };
+
+    // --- AUDIO SYSTEM ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBeep() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+    }
+    
+    function playGlitchSound() {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+        triggerGlitchVisual();
+    }
+    
+    function triggerGlitchVisual() {
+        document.body.classList.add('glitch-anim');
+        setTimeout(() => document.body.classList.remove('glitch-anim'), 300);
+    }
+
+    // --- HISTORICAL PHASES DATA ---
+    const phases = [
+      {
+        id: "pre_2011",
+        year: "1971 - 2011",
+        title: "O Legado Assad e a Seca",
+        focusCity: "DAMASCO",
+        history: `
+          <p>Desde 1971 a Síria é governada pela família Assad (Hafez, e depois Bashar). O regime Baath é marcado por repressão política, censura e o domínio da minoria Alauíta (xiita) sobre a maioria Sunita.</p>
+          <h3>Motivadores da Crise:</h3>
+          <ul>
+            <li><strong>Seca Histórica (2006-2010):</strong> Colapso da agricultura gerou migração rural em massa e pobreza extrema.</li>
+            <li><strong>Autoritarismo:</strong> Prisões por motivos fúteis (como adolescentes escrevendo graffiti em Daraa) acenderam a faísca da Primavera Árabe.</li>
+          </ul>
+        `,
+        scenario: "As revoltas em Daraa começam a ganhar tração nacional exingindo reformas. Qual a resposta estrutural da liderança (Visão macro)?",
+        choices: [
+          {
+            text: "[Apoiar Regime] Esmagar protestos militarmente para manter o controle rápido.",
+            apply: () => { updateState({stability: -10, crisis: +20}); },
+            result: "O Exército Árabe Sírio (SAA) abre fogo. Protestos pacíficos viram insurgência armada."
+          },
+          {
+            text: "[Apoiar Rebeldes] Incentivar a formação do Exército Sírio Livre (FSA) com desertores.",
+            apply: () => { updateState({stability: -20, crisis: +10, intervention: +10}); },
+            result: "O FSA é formado por civis e desertores, mas a falta de controle unificado traz o caos."
+          }
+        ]
+      },
+      {
+        id: "fase_1",
+        year: "2011 - 2013",
+        title: "Fase 1: Revolução e Divisão (Ghouta)",
+        focusCity: "HOMS",
+        history: `
+          <p>O país se divide fisicamente. Cidades como Homs e Aleppo viram palcos de batalhas sangrentas de rua. O governo usa tanques e aviões contra bairros residenciais rebeldes.</p>
+          <p><strong>O Ataque Químico (2013):</strong> Em Ghouta, um ataque com gás sarin mata mais de 1000 civis. A ONU culpa o regime Assad.</p>
+        `,
+        scenario: "Com o uso de armas químicas e a guerra total declarada nas ruas, a situação humanitária entra em colapso crítico. Como proceder estrategicamente?",
+        choices: [
+          {
+            text: "Apelar para a Rússia e Irã para garantir armas pesadas e sobreviver ao avanço rebelde.",
+            apply: () => { updateState({stability: +5, crisis: +25, intervention: +15}); },
+            result: "As potências aliadas da ditadura respondem, mas os bombardeios devastam a população civil."
+          },
+          {
+            text: "Aceitar a aproximação de grupos armados extremistas do exterior para derrubar Assad mais rápido.",
+            apply: () => { updateState({stability: -10, crisis: +15, radical: +30}); },
+            result: "Grupos como a Frente Al-Nusra ganham espaço e armas. A oposição moderada perde força para radicais."
+          }
+        ]
+      },
+      {
+        id: "fase_2",
+        year: "2013 - 2015",
+        title: "Fase 2: O Surgimento do ISIS",
+        focusCity: "RAQQA",
+        history: `
+          <p>Aproveitando o caos, o <em>Islamic State of Iraq and Syria (ISIS)</em> conquista vastos territórios, fazendo de Raqqa a capital do seu autoproclamado califado.</p>
+          <h3>Atrocidades:</h3>
+          <ul>
+            <li>Execuções públicas e escravidão institucionalizada.</li>
+            <li>Destruição completa de infraestrutura nas guerras por domínio entre rebeldes, curdos e o ISIS.</li>
+          </ul>
+        `,
+        scenario: "O ISIS agora é uma ameaça global dentro das fronteiras sírias. Como focar os esforços militares?",
+        choices: [
+          {
+            text: "[Foco Curdo] Apoiar as Forças Democráticas Sírias (SDF) para lutar contra o ISIS no norte.",
+            apply: () => { updateState({radical: -10, intervention: +10}); },
+            result: "Os curdos mostram imensa coragem. O norte avança, mas a relação com a Turquia começa a deteriorar."
+          },
+          {
+            text: "[Foco Regime] Deixar o ISIS e Rebeldes lutarem entre si e fortificar Damasco.",
+            apply: () => { updateState({stability: +10, radical: +20, crisis: +10}); },
+            result: "Damasco fica segura temporariamente, mas o ISIS expande horrores incontroláveis pelo deserto."
+          }
+        ]
+      },
+      {
+        id: "fase_3",
+        year: "2015",
+        title: "Fase 3: Intervenção Internacional (Proxy War)",
+        focusCity: "ALEPPO",
+        history: `
+          <p>A guerra muda de escala e atrai o mundo. A Rússia de Putin entra pesadamente para salvar o governo Assad, destruindo Aleppo com chuva de mísseis.</p>
+          <p>Os EUA (Obama) lideram uma coalização com drones e bombardeios especificamente contra o ISIS. Turquia e parceiros Árabes armam rebeldes.</p>
+        `,
+        scenario: "Nenhuma facção opera mais sozinha. A Síria virou palco de potências nucleares e potências regionais.",
+        choices: [
+          {
+            text: "Permitir as bases militares da Rússia e Wagner e consolidar a segurança de Assad às custas da soberania.",
+            apply: () => { updateState({stability: +15, intervention: +30, crisis: +20}); },
+            result: "Milhares morrem por mísseis russos, mas o colapso iminente do estado central é interrompido."
+          },
+          {
+            text: "Focar em apoio militar ocidental contido apenas para aniquilar infraestrutura do ISIS (Drones/EUA).",
+            apply: () => { updateState({radical: -20, intervention: +20, crisis: +10}); },
+            result: "O ISIS leva duros golpes do alto, mas o país no solo continua completamente fragmentado."
+          }
+        ]
+      },
+      {
+        id: "fase_4_5",
+        year: "2017 - 2023",
+        title: "Fases 4 e 5: Derrota do ISIS e Guerra Congelada",
+        focusCity: "DAMASCO",
+        history: `
+          <p>O ISIS perde suas cidades (Raqqa, Deir ez-Zor) e o "califado" acaba, voltando a ser guerrilha oculta.</p>
+          <p>O país entra em estágio de 'guerra congelada': Governo centralizado em algumas áreas, rebeldes isolados em Idlib, Curdos autônomos no nordeste, e domínio turco no norte. As mortes chegam a 600 mil e os refugiados a 13 milhões.</p>
+        `,
+        scenario: "O país está destruído e dividido em 4 esferas de influência estrangeiras e locais. O que priorizar na diplomacia?",
+        choices: [
+          {
+            text: "Tentar acordos de cessar-fogo regionais para lidar com a crise humanitária cataclísmica.",
+            apply: () => { updateState({crisis: -10, stability: +5}); },
+            result: "A fome e as mortes diminuem levemente, mas a economia nacional permanece um pó sem perspectivas."
+          },
+          {
+            text: "Ignorar sanções e realizar campanhas militares menores para reconquistar pequenos enclaves.",
+            apply: () => { updateState({stability: -5, crisis: +5, intervention: +5}); },
+            result: "Pequenos ganhos territoriais não compensam a perda massiva de recursos. As linhas não se movem muito."
+          }
+        ]
+      },
+      {
+        id: "fase_6",
+        year: "2024 - 2026",
+        title: "Fase 6: A Queda de Assad e a Transição",
+        focusCity: "DAMASCO",
+        history: `
+          <p>Após mais de uma década de horror, uma massiva e súbita ofensiva rebelde (composta por vários grupos armados e influências) finalmente quebra as linhas de defesa esgotadas.</p>
+          <p>Em 2024, Bashar al-Assad foge do país. Um governo de transição é criado, herdando escombros, células do ISIS, e um país retalhado por Turquia, Rússia, EUA e Irã.</p>
+        `,
+        scenario: "A guerra pelo poder ditatorial acabou, mas a complexidade da reconstrução é colossal. Qual o decreto final?",
+        choices: [
+          {
+            text: "Instituir um governo de coalizão frágil com supervisão internacional rígida.",
+            apply: () => { updateState({stability: +10, intervention: +10}); },
+            result: "O país tenta respirar. É o início de uma reconstrução de 50 anos."
+          },
+          {
+            text: "Focar em varrer células do ISIS e forçar unificação militar total primeiro.",
+            apply: () => { updateState({radical: -10, crisis: +10}); },
+            result: "Violência continua em focos, mas o terrorismo organizado perde os últimos dentes na poeira."
+          }
+        ]
+      }
+    ];
+
+    const newsData = [
+        "Economia em colapso: Lira Síria perde 80% do valor.",
+        "Refugiados se acumulam na fronteira com a Turquia e Jordânia.",
+        "Israel realiza ataques preventivos perto de Damasco.",
+        "Hospitais subterrâneos são montados em áreas controladas por rebeldes.",
+        "Falta de água potável afeta 3 milhões no norte do país.",
+        "Comboio da ONU bloqueado de entrar em zona de conflito.",
+        "Ataques de drones não identificados reportados na base russa."
+    ];
+
+    // --- LOGIC ---
+    document.getElementById('btn-start').addEventListener('click', () => {
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      
+      ui.intro.classList.add('hidden');
+      ui.hud.style.display = 'flex';
+      ui.ticker.style.display = 'flex';
+      ui.map.classList.add('zoomed');
+      
+      updateHUD();
+      loadPhase(0);
+      
+      // Rotacionar noticias
+      setInterval(() => {
+          ui.tickerText.innerText = newsData[Math.floor(Math.random() * newsData.length)];
+      }, 20000);
+    });
+
+    function getColorForStat(value, inverse = false) {
+      if(inverse) {
+        if(value > 70) return 'var(--color-primary)'; // Red/Bad
+        if(value > 40) return 'var(--color-warning)'; // Orange
+        return 'var(--color-success)'; // Green/Good
+      } else {
+        if(value > 70) return 'var(--color-success)';
+        if(value > 40) return 'var(--color-warning)';
+        return 'var(--color-primary)';
+      }
+    }
+
+    function updateHUD() {
+      // Clamp values 0-100
+      Object.keys(state).forEach(k => {
+        if(typeof state[k] === 'number' && k !== 'currentPhase') {
+          state[k] = Math.max(0, Math.min(100, state[k]));
+        }
+      });
+
+      ui.barStability.style.width = state.stability + '%';
+      ui.barStability.style.backgroundColor = getColorForStat(state.stability, false);
+      ui.valStability.innerText = state.stability + '%';
+
+      ui.barCrisis.style.width = state.crisis + '%';
+      ui.barCrisis.style.backgroundColor = getColorForStat(state.crisis, true);
+      ui.valCrisis.innerText = state.crisis > 70 ? 'Severa ('+state.crisis+'%)' : state.crisis + '%';
+
+      ui.barRadical.style.width = state.radical + '%';
+      ui.barRadical.style.backgroundColor = getColorForStat(state.radical, true);
+      ui.valRadical.innerText = state.radical + '%';
+
+      ui.barIntervention.style.width = state.intervention + '%';
+      ui.barIntervention.style.backgroundColor = getColorForStat(state.intervention, true);
+      ui.valIntervention.innerText = state.intervention + '%';
+    }
+
+    function updateState(changes) {
+      let isNegative = false;
+      
+      if(changes.stability) { state.stability += changes.stability; if(changes.stability < 0) isNegative = true; }
+      if(changes.crisis) { state.crisis += changes.crisis; if(changes.crisis > 0) isNegative = true; }
+      if(changes.radical) { state.radical += changes.radical; if(changes.radical > 0) isNegative = true; }
+      if(changes.intervention) { state.intervention += changes.intervention; }
+      
+      updateHUD();
+      if(isNegative) playGlitchSound();
+    }
+
+    function pulseMapPin(cityName) {
+      // Pequeno efeito visual nas luzes do mapa dependendo da cidade focal
+      const pins = document.querySelectorAll('.map-marker');
+      pins.forEach(pin => {
+        if(pin.getAttribute('data-name') === cityName) {
+          pin.style.transform = "translate(-50%, -50%) scale(1.5)";
+          pin.style.zIndex = 10;
+        } else {
+          pin.style.transform = "translate(-50%, -50%) scale(1)";
+          pin.style.zIndex = 5;
+        }
+      });
+    }
+
+    // TYPEWRITER EFFECT
+    let typewriterTimeout;
+    function typeWriterEffect(element, htmlContent, callback) {
+        element.innerHTML = '';
+        let i = 0;
+        // Precisamos parsear HTML puro para não quebrar tags, simulando texto corrido será simplificado para texto puro por agora, 
+        // mas vamos aplicar innerHTML direto e revelar por opacity para manter as tags.
+        
+        element.innerHTML = htmlContent;
+        const chars = element.innerText; // Pega só o text para temporização
+        element.innerHTML = ''; // Limpa para digitar manual
+        
+        let inTag = false;
+        let htmlBuffer = '';
+        
+        function type() {
+            if (i < htmlContent.length) {
+                let char = htmlContent.charAt(i);
+                htmlBuffer += char;
+                element.innerHTML = htmlBuffer;
+                
+                if(char === '<') inTag = true;
+                if(char === '>') inTag = false;
+                
+                if(!inTag && char !== ' ') {
+                    if(i % 3 === 0) playBeep();
+                }
+                
+                i++;
+                let speed = inTag ? 0 : 20; // Tags instantaneas
+                typewriterTimeout = setTimeout(type, speed);
+            } else {
+                if(callback) callback();
+            }
+        }
+        type();
+    }
+    
+    function setTerritoryAura(phaseId) {
+        if(phaseId === 'pre_2011') ui.territory.style.background = 'transparent';
+        else if(phaseId === 'fase_1') ui.territory.style.background = 'radial-gradient(circle at 35% 55%, rgba(200, 50, 50, 0.4) 0%, transparent 40%)'; // Homs/Aleppo conflict
+        else if(phaseId === 'fase_2') ui.territory.style.background = 'radial-gradient(circle at 60% 40%, rgba(20, 20, 20, 0.9) 10%, transparent 60%)'; // ISIS Raqqa Black
+        else if(phaseId === 'fase_3') ui.territory.style.background = 'radial-gradient(circle at 30% 20%, rgba(50, 100, 200, 0.4) 0%, rgba(200, 50, 50, 0.4) 30%, transparent 70%)'; // Russian/Intervention
+        else ui.territory.style.background = 'linear-gradient(rgba(200, 200, 50, 0.2), rgba(20, 20, 20, 0.6))';
+    }
+
+    function loadPhase(index) {
+      if(index >= phases.length) {
+        endGame();
+        return;
+      }
+
+      clearTimeout(typewriterTimeout);
+      state.currentPhase = index;
+      const p = phases[index];
+
+      pulseMapPin(p.focusCity);
+      setTerritoryAura(p.id);
+
+      ui.panel.classList.remove('active');
+      
+      setTimeout(() => {
+        ui.year.innerText = p.year;
+        ui.title.innerText = p.title;
+        ui.content.innerHTML = '';
+        ui.actions.innerHTML = '';
+        
+        ui.panel.classList.add('active');
+        
+        // Start Typewriter
+        setTimeout(() => {
+            typeWriterEffect(ui.content, p.history + '<br/><h3>Diretriz Tática</h3><p>' + p.scenario + '</p>', () => {
+                // Post-Typewriter Show actions
+                p.choices.forEach(choice => {
+                  const btn = document.createElement('button');
+                  btn.className = 'btn-action';
+                  btn.innerText = choice.text;
+                  btn.onclick = () => {
+                    choice.apply();
+                    ui.actions.innerHTML = '<p style="color:var(--color-warning); padding:10px;">> ' + choice.result + '</p>';
+                    
+                    const nextBtn = document.createElement('button');
+                    nextBtn.className = 'btn-action';
+                    nextBtn.innerText = "Avançar Relatório Estratégico ->";
+                    nextBtn.style.marginTop = "15px";
+                    nextBtn.onclick = () => loadPhase(index + 1);
+                    
+                    ui.actions.appendChild(nextBtn);
+                  };
+                  ui.actions.appendChild(btn);
+                });
+            });
+        }, 600);
+        
+      }, 500); // tempo do fade in da panela
+    }
+
+    function endGame() {
+      ui.panel.classList.remove('active');
+      ui.hud.style.display = 'none';
+      
+      const endScreen = document.getElementById('end-screen');
+      document.getElementById('end-stability').innerText = state.stability + '%';
+      document.getElementById('end-crisis').innerText = state.crisis + '%';
+      document.getElementById('end-intervention').innerText = state.intervention + '%';
+      
+      endScreen.classList.add('active');
+    }
+
+  </script>
+</body>
+</html>
